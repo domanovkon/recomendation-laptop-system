@@ -31,7 +31,7 @@ laptopTree = [["Встроенная", "Дискретная"],
               [4, 8, 16, 32],
               ["AMD", "Intel"]]
 
-weights = [0.4, 0.3, 0.3, 0.3, 0.1]
+weights = [0.4, 0.3, 0.2, 0.3, 0.1]
 
 
 def diff_tree(t1, t2):
@@ -71,7 +71,7 @@ ds["Цена"], _ = pd.factorize(ds["Цена"])
 ds["Категория"], _ = pd.factorize(ds["Категория"])
 ds["DDR4"], _ = pd.factorize(ds["DDR4"])
 ds["ЗУ"], _ = pd.factorize(ds["ЗУ"])
-ds["Количество ОЗУ"] = ds["Количество ОЗУ"].values / max(ds["Количество ОЗУ"].values)
+ds["Количество_ОЗУ"] = ds["Количество_ОЗУ"].values / max(ds["Количество_ОЗУ"].values)
 ds["Диагональ больше 14?"], _ = pd.factorize(ds["Диагональ больше 14?"])
 ds["Количество на складе"] = ds["Количество на складе"].values / max(ds["Количество на складе"].values)
 ds["Есть подсветка клавиатуры"], _ = pd.factorize(ds["Есть подсветка клавиатуры"])
@@ -82,10 +82,54 @@ ds["Объем ЗУ"] = ds["Объем ЗУ"].values / max(ds["Объем ЗУ"]
 ds["Цвет"], _ = pd.factorize(ds["Цвет"])
 print(ds)
 
-printCorrelationMatrix(ds, manhattan)
 
-printCorrelationMatrix(ds, euclidean)
+# printCorrelationMatrix(ds, manhattan)
+#
+# printCorrelationMatrix(ds, euclidean)
+#
+# printCorrelationMatrix(ds, cosine)
+#
+# printCorrelationMatrix(dataSetFromTxt, diff_tree)
 
-printCorrelationMatrix(ds, cosine)
 
-printCorrelationMatrix(dataSetFromTxt, diff_tree)
+def getSimilarsByLaptopSerialNumber(ds, dataSet, metric, serial_number):
+    r = []
+    for i in range(len(ds.values.tolist())):
+        r.append(metric(ds.values.tolist()[serial_number], ds.values.tolist()[i]))
+
+    return pd.DataFrame(list(zip(r, map(lambda e: str("   ".join(e[-1:])),
+                                        dataSet.values.tolist()))), index=np.arange(len(r)),
+                        columns=['Величина различия', 'Ноут'])
+
+
+# Поиск рекомендаций для одного ноутбука. Начальные параметры:
+serial_number = 13
+distance_calculation = 'manhattan'
+# distance_calculation = 'euclidean'
+# distance_calculation = 'diff_tree'
+# distance_calculation = 'cosine'
+
+print("\n\nИсходный ноутбук: ", dataSetFromTxt.values.tolist()[serial_number])
+print("Поиск... ")
+
+func = ""
+dataset = ""
+
+if distance_calculation == "manhattan":
+    func = manhattan
+    dataset = ds
+elif distance_calculation == "euclidean":
+    func = euclidean
+    dataset = ds
+elif distance_calculation == "diff_tree":
+    func = diff_tree
+    dataset = dataSetFromTxt
+elif distance_calculation == "cosine":
+    func = cosine
+    dataset = ds
+
+# print("Похожие товары:\n",
+#       getSimilarsByLaptopSerialNumber(dataset, dataSetFromTxt, func, serial_number).sort_values("Величина различия"))
+#
+# plt.plot(serial_number, serial_number, 'r*')
+# printCorrelationMatrix(dataset, func)
