@@ -80,7 +80,9 @@ ds["Процессор"], _ = pd.factorize(ds["Процессор"])
 ds["Есть Ethernet"], _ = pd.factorize(ds["Есть Ethernet"])
 ds["Объем ЗУ"] = ds["Объем ЗУ"].values / max(ds["Объем ЗУ"].values)
 ds["Цвет"], _ = pd.factorize(ds["Цвет"])
-print(ds)
+
+
+# print(ds)
 
 
 # printCorrelationMatrix(ds, manhattan)
@@ -109,10 +111,10 @@ distance_calculation = 'manhattan'
 # distance_calculation = 'diff_tree'
 # distance_calculation = 'cosine'
 
-print("\n\nИсходный ноутбук: ", dataSetFromTxt.values.tolist()[serial_number])
-print("Поиск... ")
+# print("\n\nИсходный ноутбук: ", dataSetFromTxt.values.tolist()[serial_number])
+# print("Поиск... ")
 
-func = ""
+func = "diff_tree"
 dataset = ""
 
 if distance_calculation == "manhattan":
@@ -128,8 +130,47 @@ elif distance_calculation == "cosine":
     func = cosine
     dataset = ds
 
+
 # print("Похожие товары:\n",
 #       getSimilarsByLaptopSerialNumber(dataset, dataSetFromTxt, func, serial_number).sort_values("Величина различия"))
 #
 # plt.plot(serial_number, serial_number, 'r*')
 # printCorrelationMatrix(dataset, func)
+
+def getSimilarsByGroupLaptops(ds, dataSetFromTxt, metric, like_serial_number):
+    likeVec = []
+    if (len(like_serial_number) > 0):
+        for k in like_serial_number:
+            likeVec.append(
+                np.array(getSimilarsByLaptopSerialNumber(ds, dataSetFromTxt, metric, k)["Величина различия"]))
+
+    mostRelated = pd.DataFrame()
+    r = []
+    for k in range(len(ds.values.tolist())):
+        if len(like_serial_number) > 0:
+            tt = np.sum([np.array(getSimilarsByLaptopSerialNumber(ds, dataSetFromTxt, metric, k)["Величина различия"]),
+                         np.average(likeVec, 0)], 0)
+
+        mostRelated = mostRelated.append(
+            {"id": np.argmin(tt),
+             "Характеристики": " ".join(list(map(str, dataSetFromTxt.values.tolist()[np.argmin(tt)]))[:5]),
+             "Разница": np.amin(tt)}, ignore_index=True)
+        r.append(tt)
+
+    print(r)
+    matr = r
+    plt.imshow(matr)
+    plt.xticks(np.arange(0, len(ds.values.tolist())), rotation=-45)
+    plt.yticks(np.arange(0, len(ds.values.tolist())))
+    figure(figsize=(10, 10), dpi=160)
+    plt.show()
+    mostRelated = mostRelated.drop_duplicates(subset='id', keep="last")
+    mostRelated = mostRelated.sort_values('Разница')
+    print(mostRelated)
+
+    return r
+
+
+# Поиск рекомендаций для группы ноутбуков. Начальные параметры:
+favorites = "27,26,25"
+getSimilarsByGroupLaptops(ds, dataSetFromTxt, func, np.fromstring(favorites, dtype=int, sep=','))
