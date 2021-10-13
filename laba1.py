@@ -137,7 +137,7 @@ elif distance_calculation == "cosine":
 # plt.plot(serial_number, serial_number, 'r*')
 # printCorrelationMatrix(dataset, func)
 
-def getSimilarsByGroupLaptops(ds, dataSetFromTxt, metric, like_serial_number):
+def getSimilarsByGroupLaptops(ds, dataSetFromTxt, metric, like_serial_number, dislikes):
     likeVec = []
     if (len(like_serial_number) > 0):
         for k in like_serial_number:
@@ -157,7 +157,7 @@ def getSimilarsByGroupLaptops(ds, dataSetFromTxt, metric, like_serial_number):
              "Разница": np.amin(tt)}, ignore_index=True)
         r.append(tt)
 
-    print(r)
+    # print(r)
     matr = r
     plt.imshow(matr)
     plt.xticks(np.arange(0, len(ds.values.tolist())), rotation=-45)
@@ -165,6 +165,11 @@ def getSimilarsByGroupLaptops(ds, dataSetFromTxt, metric, like_serial_number):
     figure(figsize=(10, 10), dpi=160)
     plt.show()
     mostRelated = mostRelated.drop_duplicates(subset='id', keep="last")
+    for k in like_serial_number:
+        mostRelated = mostRelated.drop(k)
+
+    for k in dislikes:
+        mostRelated = mostRelated.drop(k)
     mostRelated = mostRelated.sort_values('Разница')
     print(mostRelated)
 
@@ -173,4 +178,6 @@ def getSimilarsByGroupLaptops(ds, dataSetFromTxt, metric, like_serial_number):
 
 # Поиск рекомендаций для группы ноутбуков. Начальные параметры:
 favorites = "27,26,25"
-getSimilarsByGroupLaptops(ds, dataSetFromTxt, func, np.fromstring(favorites, dtype=int, sep=','))
+dislikes = "6,7"
+getSimilarsByGroupLaptops(ds, dataSetFromTxt, func, np.fromstring(favorites, dtype=int, sep=','),
+                          np.fromstring(dislikes, dtype=int, sep=','))
