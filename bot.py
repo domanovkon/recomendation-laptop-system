@@ -66,6 +66,9 @@ def getSimilarsInSearch(ds, dataSet, metric, dfSearch):
                         columns=['Величина различия', 'Ноут'])
 
 
+def get_likes(message):
+    print(message.text)
+
 @bot.callback_query_handler(func=lambda call: True)
 def callback_query(call):
     global gpu_type
@@ -96,15 +99,16 @@ def callback_query(call):
         bot.send_message(call.message.chat.id, "Выбери что хочешь сделать дальше🤔", reply_markup=keyboard)
     elif call.data == "lap_like":
         bot.send_message(call.message.chat.id, "Введи номера понравившихся ноутбуков через пробел 👍🏻")
-    elif (call.data == "lap_filter" or call.data == "filt_no"):
+        bot.register_next_step_handler(call.message, get_likes)
+    elif call.data == "lap_filter" or call.data == "filt_no":
         keyboard = types.InlineKeyboardMarkup()
         gpu_disk_k = types.InlineKeyboardButton(text='Дискретная', callback_data="disk")
         keyboard.add(gpu_disk_k)
         gpu_inside_k = types.InlineKeyboardButton(text='Встроенная', callback_data="inside")
         keyboard.add(gpu_inside_k)
-        if (call.data == "lap_filter"):
+        if call.data == "lap_filter":
             bot.send_message(call.message.chat.id, 'Подбор ноутбука по параметрам 🤓')
-        elif (call.data == "filt_no"):
+        elif call.data == "filt_no":
             bot.send_message(call.message.chat.id, 'Попробуем еще раз 🤓')
         bot.send_message(call.message.chat.id, 'Выберите тип видеокарты 🌈', reply_markup=keyboard)
     elif call.data == "disk":
