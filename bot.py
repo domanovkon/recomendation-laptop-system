@@ -2,6 +2,9 @@ import numpy as np
 import telebot
 import pymorphy2
 import pandas as pd
+from matplotlib import pyplot as plt
+from matplotlib.pyplot import figure
+
 from token_api import TOKEN_API
 from telebot import types, util
 from smiles import sml
@@ -66,8 +69,24 @@ def getSimilarsInSearch(ds, dataSet, metric, dfSearch):
                         columns=['Величина различия', 'Ноут'])
 
 
+likes = ''
+dislikes = ''
+
+
 def get_likes(message):
-    print(message.text)
+    global likes
+    likes = message.text.split()
+    bot.register_next_step_handler(message, get_dislikes)
+    bot.send_message(message.from_user.id, "Введи номера тех ноутбуков, которые тебе не понравились 👎🏻")
+
+
+def get_dislikes(message):
+    global dislikes
+    dislikes = message.text.split()
+    func = diff_tree
+    print(likes)
+    print(dislikes)
+
 
 @bot.callback_query_handler(func=lambda call: True)
 def callback_query(call):
@@ -94,7 +113,7 @@ def callback_query(call):
         keyboard.add(key_list)
         key_filt = types.InlineKeyboardButton(text='Подобрать ноутбук по параметрам', callback_data="lap_filter")
         keyboard.add(key_filt)
-        key_like = types.InlineKeyboardButton(text='Показать похожие', callback_data="lap_like")
+        key_like = types.InlineKeyboardButton(text='Порекомендовать ноутбук', callback_data="lap_like")
         keyboard.add(key_like)
         bot.send_message(call.message.chat.id, "Выбери что хочешь сделать дальше🤔", reply_markup=keyboard)
     elif call.data == "lap_like":
