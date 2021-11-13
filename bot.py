@@ -2,8 +2,6 @@ import numpy as np
 import telebot
 import pymorphy2
 import pandas as pd
-from matplotlib import pyplot as plt
-from matplotlib.pyplot import figure
 
 from token_api import TOKEN_API
 from telebot import types, util
@@ -36,6 +34,11 @@ laptopTree = [["Встроенная", "Дискретная"],
 
 weights = [0.4, 0.3, 0.2, 0.3, 0.1]
 
+def manhattan(a, b):
+    distance = 0
+    for i in range(len(a)):
+        distance += abs(a[i] - b[i])
+    return distance
 
 def diff_tree(t1, t2):
     difftree = []
@@ -69,23 +72,99 @@ def getSimilarsInSearch(ds, dataSet, metric, dfSearch):
                         columns=['Величина различия', 'Ноут'])
 
 
+def getSimilarsByLaptopSerialNumber(ds, dataSet, metric, serial_number):
+    r = []
+    for i in range(len(ds.values.tolist())):
+        r.append(metric(ds.values.tolist()[serial_number], ds.values.tolist()[i]))
+
+    return pd.DataFrame(list(zip(r, map(lambda e: str("   ".join(e[-1:])),
+                                        dataSet.values.tolist()))), index=np.arange(len(r)),
+                        columns=['Величина различия', 'Ноут'])
+
+
+def getSimilarsByGroupLaptops(ds, dataSetFromTxt, metric, like_serial_number, dislikes, message):
+    likeVec = []
+    if (len(like_serial_number) > 0):
+        for k in like_serial_number:
+            likeVec.append(
+                np.array(getSimilarsByLaptopSerialNumber(ds, dataSetFromTxt, metric, k)["Величина различия"]))
+
+    mostRelated = pd.DataFrame()
+    r = []
+    for k in range(len(ds.values.tolist())):
+        if len(like_serial_number) > 0:
+            tt = np.sum([np.array(getSimilarsByLaptopSerialNumber(ds, dataSetFromTxt, metric, k)["Величина различия"]),
+                         np.average(likeVec, 0)], 0)
+        mostRelated = mostRelated.append(
+            {"id": np.argmin(tt),
+             "Характеристики": " ".join(list(map(str, dataSetFromTxt.values.tolist()[np.argmin(tt)]))[-1:]),
+             "Разница": np.amin(tt)}, ignore_index=True)
+        r.append(tt)
+
+    mostRelated = mostRelated.drop_duplicates(subset='id', keep="last")
+    for k in like_serial_number:
+        mostRelated = mostRelated.drop(index=k)
+    for dis in dislikes:
+        mostRelated = mostRelated.drop(index=dis)
+    mostRelated = mostRelated.sort_values('Разница')
+    laptop_list_counter = 0
+    for x in mostRelated.values.tolist():
+        if laptop_list_counter == 5:
+            break
+        laptop_list_counter = laptop_list_counter + 1
+        str1 = x[2] + '\n'
+        bot.send_message(message.chat.id, sml[laptop_list_counter] + " " + str1)
+    return r
+
+
 likes = ''
 dislikes = ''
 
 
 def get_likes(message):
     global likes
-    likes = message.text.split()
+    likes = message.text
     bot.register_next_step_handler(message, get_dislikes)
     bot.send_message(message.from_user.id, "Введи номера тех ноутбуков, которые тебе не понравились 👎🏻")
 
 
 def get_dislikes(message):
     global dislikes
-    dislikes = message.text.split()
-    func = diff_tree
-    print(likes)
-    print(dislikes)
+    global likes
+    dataSetFromTxt = pd.read_csv('laptops.txt', delimiter='\t', encoding="utf-16-le")
+    ds = dataSetFromTxt.copy(deep=True)
+    dislikes = message.text
+    func = manhattan
+    del ds["Ноутбук"]
+    del ds["Теги"]
+
+    ds["Тип видеокарты"], _ = pd.factorize(ds["Тип видеокарты"])
+    ds["Цена"], _ = pd.factorize(ds["Цена"])
+    ds["Категория"], _ = pd.factorize(ds["Категория"])
+    ds["DDR4"], _ = pd.factorize(ds["DDR4"])
+    ds["ЗУ"], _ = pd.factorize(ds["ЗУ"])
+    ds["Количество_ОЗУ"] = ds["Количество_ОЗУ"].values / max(ds["Количество_ОЗУ"].values)
+    ds["Диагональ больше 14?"], _ = pd.factorize(ds["Диагональ больше 14?"])
+    ds["Количество на складе"] = ds["Количество на складе"].values / max(ds["Количество на складе"].values)
+    ds["Есть подсветка клавиатуры"], _ = pd.factorize(ds["Есть подсветка клавиатуры"])
+    ds["Есть отпечаток пальца"], _ = pd.factorize(ds["Есть отпечаток пальца"])
+    ds["Процессор"], _ = pd.factorize(ds["Процессор"])
+    ds["Есть Ethernet"], _ = pd.factorize(ds["Есть Ethernet"])
+    ds["Объем ЗУ"] = ds["Объем ЗУ"].values / max(ds["Объем ЗУ"].values)
+    ds["Цвет"], _ = pd.factorize(ds["Цвет"])
+    likes = np.fromstring(likes, dtype=int, sep=' ')
+    likes = [x - 1 for x in likes]
+    dislikes = np.fromstring(dislikes, dtype=int, sep=' ')
+    dislikes = [x - 1 for x in dislikes]
+    getSimilarsByGroupLaptops(ds, dataSetFromTxt, func, likes, dislikes, message)
+    keyboard = types.InlineKeyboardMarkup()
+    key_list = types.InlineKeyboardButton(text='Показать список всех товаров на складе', callback_data="lap_list")
+    keyboard.add(key_list)
+    key_filt = types.InlineKeyboardButton(text='Подобрать ноутбук по параметрам', callback_data="lap_filter")
+    keyboard.add(key_filt)
+    key_like = types.InlineKeyboardButton(text='Порекомендовать ноутбук', callback_data="lap_like")
+    keyboard.add(key_like)
+    bot.send_message(message.chat.id, "Выбери что хочешь сделать дальше🤔", reply_markup=keyboard)
 
 
 @bot.callback_query_handler(func=lambda call: True)
